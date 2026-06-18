@@ -36,7 +36,7 @@ const CreateExam = () => {
       }));
 
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/exams', 
+      await axios.post('https://coorection-copy-server.vercel.app/api/exams', 
         { title, description, questions: formattedQuestions },
         { headers: { 'x-auth-token': token } }
       );

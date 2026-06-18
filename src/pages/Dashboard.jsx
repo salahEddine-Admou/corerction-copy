@@ -15,8 +15,8 @@ const Dashboard = () => {
         const headers = { 'x-auth-token': token };
         
         const [examsRes, studentsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/exams', { headers }),
-          axios.get('http://localhost:5000/api/students', { headers })
+          axios.get('https://coorection-copy-server.vercel.app/api/exams', { headers }),
+          axios.get('https://coorection-copy-server.vercel.app/api/students', { headers })
         ]);
         
         setExams(examsRes.data);
