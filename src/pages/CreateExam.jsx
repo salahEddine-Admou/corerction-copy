@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Trash2, Loader2 } from 'lucide-react';
 
 const CreateExam = () => {
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([
@@ -29,9 +30,11 @@ const CreateExam = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const formattedQuestions = questions.map(q => ({
         ...q,
+        points: Number(q.points),
         expectedKeywords: q.expectedKeywords.split(',').map(k => k.trim()).filter(k => k)
       }));
 
@@ -42,7 +45,9 @@ const CreateExam = () => {
       );
       navigate('/dashboard');
     } catch (err) {
-      alert('Error creating exam');
+      alert('Erreur lors de la création');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,8 +146,13 @@ const CreateExam = () => {
             </div>
 
             <div className="pt-6">
-              <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-indigo-700 shadow-lg flex justify-center items-center transition-transform hover:scale-[1.02]">
-                <Save className="h-5 w-5 mr-2" /> Enregistrer l'examen
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="h-6 w-6 mr-2 animate-spin" /> : <Save className="h-6 w-6 mr-2" />}
+                {loading ? 'Création en cours...' : "Enregistrer l'Examen"}
               </button>
             </div>
           </form>

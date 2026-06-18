@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { LogOut, Plus, FileText, Users } from 'lucide-react';
+import { LogOut, Plus, FileText, Users, Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const [exams, setExams] = useState([]);
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
         const headers = { 'x-auth-token': token };
         
+        setLoading(true);
         const [examsRes, studentsRes] = await Promise.all([
           axios.get('https://coorection-copy-server.vercel.app/api/exams', { headers }),
           axios.get('https://coorection-copy-server.vercel.app/api/students', { headers })
@@ -25,15 +31,26 @@ const Dashboard = () => {
         if (err.response?.status === 401) {
           handleLogout();
         }
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mb-4" />
+        <p className="text-gray-600 font-medium text-lg">Chargement de vos données...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
