@@ -5,18 +5,27 @@ import Dashboard from './pages/Dashboard';
 import ExamDetails from './pages/ExamDetails';
 import ScanCopy from './pages/ScanCopy';
 
-function App() {
-  const isAuthenticated = !!localStorage.getItem('token');
+// Evaluates the token on every navigation rather than once at app mount
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" replace />;
+};
 
+const PublicRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return !token ? children : <Navigate to="/dashboard" replace />;
+};
+
+function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gray-950 text-gray-100">
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-          <Route path="/exam/:id" element={isAuthenticated ? <ExamDetails /> : <Navigate to="/login" />} />
-          <Route path="/scan-copy" element={isAuthenticated ? <ScanCopy /> : <Navigate to="/login" />} />
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/exam/:id" element={<ProtectedRoute><ExamDetails /></ProtectedRoute>} />
+          <Route path="/scan-copy" element={<ProtectedRoute><ScanCopy /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
     </Router>

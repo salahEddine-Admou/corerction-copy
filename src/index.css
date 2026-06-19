@@ -2,6 +2,11 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-gray-950 text-gray-100 antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
   }
 }

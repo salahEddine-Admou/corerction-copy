@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { LogOut, Plus, FileText, Users, Loader2, ScanLine, Trash2, Edit2, X, Check, UserPlus, LayoutDashboard, GraduationCap, Menu, ChevronLeft } from 'lucide-react';
 import CreateExamModal from '../components/CreateExamModal';
-import { API_URL } from '../config';
+import api from '../api';
 
 const Dashboard = () => {
   const [exams, setExams] = useState([]);
@@ -21,29 +20,25 @@ const Dashboard = () => {
   const [editData, setEditData] = useState({ firstName: '', lastName: '', matricule: '', className: '' });
   const [studentLoading, setStudentLoading] = useState(false);
 
-  const getHeaders = () => ({ 'x-auth-token': localStorage.getItem('token') });
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) { navigate('/login'); return; }
-        const headers = { 'x-auth-token': token };
         setLoading(true);
         const [examsRes, studentsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/exams`, { headers }),
-          axios.get(`${API_URL}/api/students`, { headers })
+          api.get('/api/exams'),
+          api.get('/api/students')
         ]);
         setExams(examsRes.data);
         setStudents(studentsRes.data);
       } catch (err) {
-        if (err.response?.status === 401) handleLogout();
+        // 401 is handled globally by api.js interceptor
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [navigate]);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -55,7 +50,7 @@ const Dashboard = () => {
     e.preventDefault();
     setStudentLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/students`, newStudent, { headers: getHeaders() });
+      const res = await api.post('/api/students', newStudent);
       setStudents([res.data, ...students]);
       setNewStudent({ firstName: '', lastName: '', matricule: '', className: '' });
       setShowAddForm(false);
@@ -69,7 +64,7 @@ const Dashboard = () => {
   const handleDeleteStudent = async (id) => {
     if (!window.confirm('Supprimer cet élève ?')) return;
     try {
-      await axios.delete(`${API_URL}/api/students/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/students/${id}`);
       setStudents(students.filter(s => s._id !== id));
     } catch (err) {
       alert('Erreur lors de la suppression');
@@ -84,7 +79,7 @@ const Dashboard = () => {
   const handleEditStudent = async () => {
     setStudentLoading(true);
     try {
-      const res = await axios.put(`${API_URL}/api/students/${editingId}`, editData, { headers: getHeaders() });
+      const res = await api.put(`/api/students/${editingId}`, editData);
       setStudents(students.map(s => s._id === editingId ? res.data : s));
       setEditingId(null);
     } catch (err) {
@@ -330,26 +325,26 @@ const Dashboard = () => {
 
               {/* Add form */}
               {showAddForm && (
-                <form onSubmit={handleAddStudent} className="bg-gray-900 p-5 rounded-2xl border border-green-500/30 space-y-3">
-                  <h4 className="text-white font-medium mb-2">Nouvel élève</h4>
+                <form onSubmit={handleAddStudent} className="bg-gray-900 p-5 rounded-2xl border border-green-500/20 space-y-4">
+                  <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-2 ml-0.5">Nouvel élève</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <input type="text" required placeholder="Prénom"
-                      className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-500"
+                      className="bg-gray-950/50 border border-gray-800 text-white px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all placeholder-gray-600 shadow-inner"
                       value={newStudent.firstName} onChange={e => setNewStudent({...newStudent, firstName: e.target.value})} />
                     <input type="text" required placeholder="Nom"
-                      className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-500"
+                      className="bg-gray-950/50 border border-gray-800 text-white px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all placeholder-gray-600 shadow-inner"
                       value={newStudent.lastName} onChange={e => setNewStudent({...newStudent, lastName: e.target.value})} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <input type="text" required placeholder="Matricule"
-                      className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-500"
+                      className="bg-gray-950/50 border border-gray-800 text-white px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all placeholder-gray-600 shadow-inner"
                       value={newStudent.matricule} onChange={e => setNewStudent({...newStudent, matricule: e.target.value})} />
                     <input type="text" required placeholder="Classe (ex: Terminale S)"
-                      className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-500"
+                      className="bg-gray-950/50 border border-gray-800 text-white px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all placeholder-gray-600 shadow-inner"
                       value={newStudent.className} onChange={e => setNewStudent({...newStudent, className: e.target.value})} />
                   </div>
                   <button type="submit" disabled={studentLoading}
-                    className="w-full bg-green-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center">
+                    className="w-full bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-500 transition-all cursor-pointer shadow-lg shadow-green-500/10 active:scale-[0.99] disabled:opacity-50 flex items-center justify-center">
                     {studentLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                     Ajouter l'élève
                   </button>
@@ -362,37 +357,37 @@ const Dashboard = () => {
                   <p className="text-gray-500">Aucun élève inscrit.</p>
                 </div>
               ) : (
-                <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+                <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-inner">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                        <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
-                        <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Classe</th>
-                        <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <tr className="border-b border-gray-800/80 bg-gray-950/30">
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nom</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Matricule</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Classe</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {students.map(student => (
-                        <tr key={student._id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <tr key={student._id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors">
                           {editingId === student._id ? (
                             <>
                               <td className="px-5 py-3">
                                 <div className="flex gap-2">
-                                  <input type="text" value={editData.firstName} className="bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-sm w-24" onChange={e => setEditData({...editData, firstName: e.target.value})} />
-                                  <input type="text" value={editData.lastName} className="bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-sm w-24" onChange={e => setEditData({...editData, lastName: e.target.value})} />
+                                  <input type="text" value={editData.firstName} className="bg-gray-950 border border-gray-800 text-white px-2.5 py-1.5 rounded-lg text-sm w-28 focus:outline-none focus:ring-2 focus:ring-green-500/40" onChange={e => setEditData({...editData, firstName: e.target.value})} />
+                                  <input type="text" value={editData.lastName} className="bg-gray-950 border border-gray-800 text-white px-2.5 py-1.5 rounded-lg text-sm w-28 focus:outline-none focus:ring-2 focus:ring-green-500/40" onChange={e => setEditData({...editData, lastName: e.target.value})} />
                                 </div>
                               </td>
                               <td className="px-5 py-3">
-                                <input type="text" value={editData.matricule} className="bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-sm w-28" onChange={e => setEditData({...editData, matricule: e.target.value})} />
+                                <input type="text" value={editData.matricule} className="bg-gray-950 border border-gray-800 text-white px-2.5 py-1.5 rounded-lg text-sm w-32 focus:outline-none focus:ring-2 focus:ring-green-500/40" onChange={e => setEditData({...editData, matricule: e.target.value})} />
                               </td>
                               <td className="px-5 py-3">
-                                <input type="text" value={editData.className} className="bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-sm w-28" onChange={e => setEditData({...editData, className: e.target.value})} />
+                                <input type="text" value={editData.className} className="bg-gray-950 border border-gray-800 text-white px-2.5 py-1.5 rounded-lg text-sm w-32 focus:outline-none focus:ring-2 focus:ring-green-500/40" onChange={e => setEditData({...editData, className: e.target.value})} />
                               </td>
                               <td className="px-5 py-3 text-right">
-                                <div className="flex justify-end gap-1">
-                                  <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-300 p-1.5 rounded-lg hover:bg-gray-800"><X className="h-4 w-4" /></button>
-                                  <button onClick={handleEditStudent} className="text-green-500 hover:text-green-300 p-1.5 rounded-lg hover:bg-gray-800"><Check className="h-4 w-4" /></button>
+                                <div className="flex justify-end gap-1.5">
+                                  <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-200 p-1.5 rounded-lg hover:bg-gray-800 cursor-pointer"><X className="h-4 w-4" /></button>
+                                  <button onClick={handleEditStudent} className="text-green-400 hover:text-green-300 p-1.5 rounded-lg hover:bg-gray-800 cursor-pointer"><Check className="h-4 w-4" /></button>
                                 </div>
                               </td>
                             </>

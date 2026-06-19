@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { ArrowLeft, Loader2, FileText, CheckCircle2, ChevronRight, XCircle, FileScan, Users, GraduationCap, AlertTriangle } from 'lucide-react';
+import api from '../api';
 import { API_URL } from '../config';
 
 const ExamDetails = () => {
@@ -13,20 +13,25 @@ const ExamDetails = () => {
   const [activeTab, setActiveTab] = useState('results'); // 'results' or 'questions'
   const [selectedStudentGroup, setSelectedStudentGroup] = useState(null);
   const [activeVersionIndex, setActiveVersionIndex] = useState(0);
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSubmissions, setTotalSubmissions] = useState(0);
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const headers = { 'x-auth-token': token };
-        
         const [examRes, submissionsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/exams/${id}`, { headers }),
-          axios.get(`${API_URL}/api/submissions/exam/${id}`, { headers })
+          api.get(`/api/exams/${id}`),
+          api.get(`/api/submissions/exam/${id}?page=${page}&limit=${limit}`)
         ]);
-        
         setExam(examRes.data);
-        setSubmissions(submissionsRes.data);
+        const { submissions, total, totalPages: tp } = submissionsRes.data;
+        setSubmissions(submissions);
+        setTotalSubmissions(total);
+        setTotalPages(tp);
       } catch (err) {
         console.error(err);
       } finally {
@@ -34,7 +39,7 @@ const ExamDetails = () => {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, page]);
 
   if (loading) {
     return (
@@ -105,24 +110,48 @@ const ExamDetails = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Copies corrigées</p>
-                <p className="text-2xl font-bold text-green-400">{submissions.length}</p>
+                <p className="text-2xl font-bold text-green-400">{totalSubmissions}</p>
               </div>
             </div>
           </div>
+          <button
+            onClick={async () => {
+              try {
+                const response = await api.get(
+                  `/api/submissions/exam/${id}/export?format=csv`,
+                  { responseType: 'blob' }
+                );
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `exam_${id}_results.csv`);
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode.removeChild(link);
+                window.URL.revokeObjectURL(url);
+              } catch (err) {
+                console.error('Erreur lors de l\'export CSV :', err);
+                alert('Échec de l\'export CSV. Vérifiez que vous êtes connecté.');
+              }
+            }}
+            className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg"
+          >
+            Exporter CSV
+          </button>
         </div>
 
         {/* Tabs */}
         <div className="flex space-x-2 mb-6 bg-gray-900 p-1 rounded-xl w-fit border border-gray-800">
-          <button 
-            onClick={() => setActiveTab('results')}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'results' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}
-          >
-            <Users className="h-4 w-4 mr-2" /> Résultats ({uniqueStudents.length} élèves)
+            <button 
+              onClick={() => setActiveTab('results')}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'results' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'} hover:scale-105 transition-transform duration-150`}
+            >
+            <Users className="h-4 w-4 mr-2" /> Résultats ({totalSubmissions} élèves)
           </button>
-          <button 
-            onClick={() => setActiveTab('questions')}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'questions' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}
-          >
+            <button 
+              onClick={() => setActiveTab('questions')}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'questions' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'} hover:scale-105 transition-transform duration-150`}
+            >
             <FileText className="h-4 w-4 mr-2" /> Questions
           </button>
         </div>
@@ -154,7 +183,7 @@ const ExamDetails = () => {
                     {uniqueStudents.map(group => {
                       const latestVersion = group.versions[0];
                       return (
-                        <tr key={group.student._id} className="hover:bg-gray-800/30 transition-colors">
+                        <tr key={group.student._id} className="hover:bg-gray-800/30 hover:scale-105 transition-colors transition-transform duration-200 ease-out">
                           <td className="p-4">
                             <div className="font-medium text-white">{group.student.firstName} {group.student.lastName}</div>
                             <div className="text-xs text-gray-500 font-mono mt-0.5">{group.student.matricule}</div>
@@ -192,6 +221,28 @@ const ExamDetails = () => {
                     })}
                   </tbody>
                 </table>
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center py-4 space-x-2 border-t border-gray-800">
+                    <button
+                      onClick={() => setPage(p => Math.max(p - 1, 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1 bg-gray-800 text-gray-300 rounded disabled:opacity-50"
+                    >
+                      Précédent
+                    </button>
+                    <span className="text-gray-400">
+                      Page {page} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                      disabled={page === totalPages}
+                      className="px-3 py-1 bg-gray-800 text-gray-300 rounded disabled:opacity-50"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -233,9 +284,9 @@ const ExamDetails = () => {
       {/* Submission Details Modal */}
       {selectedStudentGroup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-8">
+          <div className="bg-gray-900/90 backdrop-blur-lg border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-8">
             {/* Modal Header */}
-            <div className="bg-gray-800 px-6 py-4 flex justify-between items-center border-b border-gray-700">
+            <div className="bg-gradient-to-r from-indigo-900 via-gray-900 to-indigo-900 px-6 py-4 flex justify-between items-center border-b border-gray-700">
               <div>
                 <h3 className="text-xl font-bold text-white">
                   Copies de {selectedStudentGroup.student.firstName} {selectedStudentGroup.student.lastName}

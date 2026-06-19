@@ -1,9 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import Webcam from 'react-webcam';
 import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen, Loader2, AlertTriangle } from 'lucide-react';
-import { API_URL } from '../config';
+import api from '../api';
 
 const ScanCopy = () => {
   const navigate = useNavigate();
@@ -61,18 +60,15 @@ const ScanCopy = () => {
   const handleResolveConflict = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { 'x-auth-token': token };
-      
       let res;
       if (selectedVersion === 'new') {
-        res = await axios.post(`${API_URL}/api/submissions/confirm-new`, {
+        res = await api.post('/api/submissions/confirm-new', {
           submissionData: conflictData.unsavedSubmission
-        }, { headers });
+        });
       } else {
-        res = await axios.put(`${API_URL}/api/submissions/replace/${selectedVersion}`, {
+        res = await api.put(`/api/submissions/replace/${selectedVersion}`, {
           submissionData: conflictData.unsavedSubmission
-        }, { headers });
+        });
       }
 
       setResult({
@@ -100,11 +96,10 @@ const ScanCopy = () => {
     setError(null);
     setResult(null);
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(
-        `${API_URL}/api/submissions/scan`, 
-        formData, 
-        { headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' } }
+      const res = await api.post(
+        '/api/submissions/scan',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       );
       
       if (res.data.conflict) {
@@ -124,105 +119,127 @@ const ScanCopy = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-950 py-8 px-4 sm:px-6 text-gray-100">
       <div className="max-w-4xl mx-auto">
-        <button onClick={() => navigate('/dashboard')} className="flex items-center text-gray-500 hover:text-indigo-600 mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Retour au Dashboard
+        <button onClick={() => navigate('/dashboard')} className="flex items-center text-gray-400 hover:text-indigo-400 mb-6 transition-colors group cursor-pointer">
+          <ArrowLeft className="h-4 w-4 mr-1 group-hover:-translate-x-0.5 transition-transform" /> Retour au Dashboard
         </button>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 text-white">
-            <h2 className="text-2xl sm:text-3xl font-bold">📄 Scanner une copie</h2>
-            <p className="mt-2 opacity-90">Scannez une copie d'examen et l'IA identifie automatiquement l'élève, l'examen et corrige les réponses.</p>
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl overflow-hidden mb-8">
+          <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border-b border-gray-800/60 px-6 py-8 relative">
+            {/* background subtle glows */}
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-30 pointer-events-none" />
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+              <FileScan className="h-8 w-8 text-indigo-400 animate-pulse" />
+              <span>Scanner une copie</span>
+            </h2>
+            <p className="mt-2 text-gray-400 text-sm sm:text-base font-light max-w-2xl">
+              Scannez ou prenez en photo la copie d'un élève. Notre IA se chargera d'identifier automatiquement l'élève, de retrouver l'examen correspondant, et de corriger chaque réponse.
+            </p>
           </div>
 
-          <div className="p-4 sm:p-8">
-            <form onSubmit={handleUpload} className="bg-gray-50 p-4 sm:p-6 rounded-2xl border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <FileScan className="mr-2 text-indigo-500"/> Fournir l'image de la copie
+          <div className="p-4 sm:p-8 space-y-8">
+            <form onSubmit={handleUpload} className="bg-gray-950/40 p-4 sm:p-6 rounded-2xl border border-gray-800/80 backdrop-blur-sm shadow-inner">
+              <h3 className="text-lg font-bold text-white mb-6 flex items-center">
+                <ImageIcon className="mr-2.5 text-indigo-400 h-5 w-5"/> Fournir la copie d'examen
               </h3>
               
               <div className="mb-6">
                 {/* Method selector */}
                 {!preview && (
-                  <div className="flex bg-gray-200 rounded-lg p-1 mb-4 max-w-sm">
-                    <button type="button" onClick={() => setUseCamera(false)} className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-colors ${!useCamera ? 'bg-white shadow text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}>
-                      <ImageIcon className="w-4 h-4 mr-2"/> Fichier
+                  <div className="flex bg-gray-950/80 border border-gray-800 rounded-xl p-1 mb-6 max-w-xs">
+                    <button type="button" onClick={() => setUseCamera(false)} className={`flex-1 flex justify-center items-center py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${!useCamera ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-inner' : 'text-gray-400 hover:text-gray-200'}`}>
+                      <ImageIcon className="w-3.5 h-3.5 mr-1.5"/> Fichier
                     </button>
-                    <button type="button" onClick={() => setUseCamera(true)} className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-colors ${useCamera ? 'bg-white shadow text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}>
-                      <Camera className="w-4 h-4 mr-2"/> Appareil Photo
+                    <button type="button" onClick={() => setUseCamera(true)} className={`flex-1 flex justify-center items-center py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${useCamera ? 'bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 shadow-inner' : 'text-gray-400 hover:text-gray-200'}`}>
+                      <Camera className="w-3.5 h-3.5 mr-1.5"/> Caméra
                     </button>
                   </div>
                 )}
 
                 {/* Content based on method */}
                 {preview ? (
-                  <div className="relative border-2 border-dashed border-indigo-300 rounded-xl p-2 bg-white text-center">
-                    <img src={preview} alt="Aperçu" className="max-h-64 mx-auto rounded-lg object-contain" />
-                    <button type="button" onClick={resetSelection} className="mt-4 text-sm text-red-500 font-medium hover:text-red-700">Changer l'image</button>
+                  <div className="relative border border-dashed border-indigo-500/20 rounded-2xl p-4 bg-gray-950/50 text-center">
+                    <img src={preview} alt="Aperçu de la copie" className="max-h-80 mx-auto rounded-xl object-contain border border-gray-800/50 shadow-lg" />
+                    <button type="button" onClick={resetSelection} className="mt-4 text-sm text-red-400 font-medium hover:text-red-300 transition-colors cursor-pointer">
+                      Changer de document / Reprendre
+                    </button>
                   </div>
                 ) : useCamera ? (
-                  <div className="border-2 border-gray-300 rounded-xl overflow-hidden bg-black flex flex-col items-center p-2">
+                  <div className="border border-gray-800 rounded-2xl overflow-hidden bg-gray-950 flex flex-col items-center p-3 shadow-inner">
                     <Webcam
                       audio={false}
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
                       videoConstraints={{ facingMode: "environment" }}
-                      className="w-full max-w-lg rounded-lg"
+                      className="w-full max-w-lg rounded-xl border border-gray-800 shadow-md"
                     />
-                    <button type="button" onClick={capture} className="mt-4 mb-2 bg-white text-gray-900 rounded-full px-6 py-2 font-bold flex items-center shadow-lg hover:bg-gray-100">
-                      <Camera className="w-5 h-5 mr-2" /> Prendre la photo
+                    <button type="button" onClick={capture} className="mt-4 mb-2 bg-indigo-600 hover:bg-indigo-50 text-white rounded-full px-6 py-2.5 font-bold flex items-center shadow-lg hover:shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all">
+                      <Camera className="w-5 h-5 mr-2" /> Capturer l'image
                     </button>
                   </div>
                 ) : (
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    required={!file}
-                    className="w-full px-4 py-8 text-center border-2 border-dashed border-gray-300 rounded-xl bg-white cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:outline-none"
-                  />
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      required={!file}
+                      id="file-upload"
+                      className="peer hidden"
+                    />
+                    <label 
+                      htmlFor="file-upload"
+                      className="w-full px-6 py-12 text-center border border-dashed border-gray-800 rounded-2xl bg-gray-950/50 hover:bg-gray-950/80 cursor-pointer flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:border-indigo-500/40"
+                    >
+                      <Upload className="h-10 w-10 text-gray-500 group-hover:text-indigo-400 transition-colors" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-300">Choisissez une image de copie</p>
+                        <p className="text-xs text-gray-500 mt-1">Glissez-déposez ou parcourez vos fichiers (PNG, JPG)</p>
+                      </div>
+                    </label>
+                  </div>
                 )}
               </div>
 
               <button 
                 type="submit" 
                 disabled={loading || !file}
-                className="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-indigo-700 shadow-md flex justify-center items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-indigo-500 hover:shadow-indigo-600/20 shadow-lg flex justify-center items-center transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
               >
                 {loading ? (
-                   <span className="animate-pulse flex items-center"><FileScan className="animate-spin h-5 w-5 mr-2" /> Analyse IA en cours...</span>
+                   <span className="animate-pulse flex items-center"><Loader2 className="animate-spin h-5 w-5 mr-2" /> Correction par l'IA en cours...</span>
                 ) : (
-                  <><Upload className="h-5 w-5 mr-2" /> Lancer la Correction Intelligente</>
+                  <><FileScan className="h-5 w-5 mr-2" /> Lancer la Correction Automatisée</>
                 )}
               </button>
             </form>
 
             {/* Error display */}
             {error && (
-              <div className="mt-6 bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6">
-                <div className="flex items-center mb-2">
-                  <AlertCircle className="h-6 w-6 text-red-500 mr-2 shrink-0" />
-                  <h3 className="text-lg font-bold text-red-800">{error.msg}</h3>
+              <div className="mt-6 bg-red-950/20 border border-red-500/20 rounded-2xl p-5 sm:p-6 animate-fade-in-up">
+                <div className="flex items-center mb-3">
+                  <AlertCircle className="h-6 w-6 text-red-400 mr-2.5 shrink-0" />
+                  <h3 className="text-lg font-bold text-red-200">{error.msg}</h3>
                 </div>
                 {error.extractedData && (
-                  <div className="mt-3 text-sm text-red-700 space-y-1">
-                    <p>📝 Examen détecté : <strong>{error.extractedData.examTitle || 'Non trouvé'}</strong></p>
-                    <p>👤 Élève détecté : <strong>{error.extractedData.studentName || 'Non trouvé'}</strong></p>
+                  <div className="mt-4 text-sm text-red-300/80 space-y-2 bg-red-950/30 p-4 rounded-xl border border-red-500/10">
+                    <p className="flex items-center gap-1.5">📝 Examen détecté : <strong className="text-white font-semibold">{error.extractedData.examTitle || 'Non détecté'}</strong></p>
+                    <p className="flex items-center gap-1.5">👤 Élève détecté : <strong className="text-white font-semibold">{error.extractedData.studentName || 'Non détecté'}</strong></p>
                   </div>
                 )}
                 {error.availableExams && (
-                  <div className="mt-3 text-sm text-red-600">
-                    <p className="font-medium">Examens disponibles :</p>
-                    <ul className="list-disc ml-5 mt-1">
+                  <div className="mt-4 text-sm text-red-300">
+                    <p className="font-semibold text-white mb-1">Examens disponibles :</p>
+                    <ul className="list-disc ml-5 space-y-0.5 opacity-80">
                       {error.availableExams.map((e, i) => <li key={i}>{e}</li>)}
                     </ul>
                   </div>
                 )}
                 {error.availableStudents && (
-                  <div className="mt-3 text-sm text-red-600">
-                    <p className="font-medium">Élèves disponibles :</p>
-                    <ul className="list-disc ml-5 mt-1">
+                  <div className="mt-4 text-sm text-red-300">
+                    <p className="font-semibold text-white mb-1">Élèves enregistrés :</p>
+                    <ul className="list-disc ml-5 space-y-0.5 opacity-80">
                       {error.availableStudents.map((s, i) => <li key={i}>{s}</li>)}
                     </ul>
                   </div>
@@ -232,60 +249,91 @@ const ScanCopy = () => {
 
             {/* Success result */}
             {result && (
-              <div className="mt-8 animate-fade-in-up">
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-6">
+              <div className="mt-8 animate-fade-in-up space-y-6">
+                <div className="bg-green-950/10 border border-green-500/20 rounded-2xl p-5 sm:p-6 shadow-lg shadow-green-500/5">
                   
-                  {/* Header with detected info */}
-                  <div className="flex items-center mb-4">
-                    <CheckCircle className="h-8 w-8 text-green-500 mr-3 shrink-0" />
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-green-800">Correction Terminée</h3>
-                      <p className="text-green-600 text-sm sm:text-base">Note Globale : <span className="font-bold text-2xl">{result.totalScore}</span> / {result.totalPoints}</p>
+                  {/* Header with score */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-6 border-b border-gray-800/60">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-10 w-10 text-green-400 mr-3.5 shrink-0" />
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Copie Corrigée avec Succès</h3>
+                        <p className="text-gray-400 text-xs sm:text-sm mt-0.5">Le rapport de correction a été généré avec succès.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-900 border border-gray-800 px-5 py-3 rounded-2xl flex items-center gap-2">
+                      <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Note globale:</span>
+                      <span className={`text-2xl font-extrabold ${result.totalScore >= (result.totalPoints / 2) ? 'text-green-400' : 'text-orange-400'}`}>
+                        {result.totalScore}
+                      </span>
+                      <span className="text-gray-600 font-bold">/</span>
+                      <span className="text-gray-300 font-bold text-lg">{result.totalPoints}</span>
                     </div>
                   </div>
 
                   {/* Detected info badges */}
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    <div className="flex items-center bg-white px-3 py-2 rounded-lg border border-green-200">
-                      <User className="h-4 w-4 text-indigo-500 mr-2" />
-                      <span className="text-sm font-medium text-gray-700">{result.studentName}</span>
+                  <div className="flex flex-wrap gap-3 mb-6 bg-gray-950/60 p-4 rounded-xl border border-gray-800/80">
+                    <div className="flex items-center bg-gray-900 px-3.5 py-2 rounded-lg border border-gray-800 text-gray-300">
+                      <User className="h-4 w-4 text-indigo-400 mr-2" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1.5">Élève:</span>
+                      <span className="text-sm font-medium text-white">{result.studentName}</span>
                     </div>
-                    <div className="flex items-center bg-white px-3 py-2 rounded-lg border border-green-200">
-                      <BookOpen className="h-4 w-4 text-purple-500 mr-2" />
-                      <span className="text-sm font-medium text-gray-700">{result.examTitle}</span>
+                    <div className="flex items-center bg-gray-900 px-3.5 py-2 rounded-lg border border-gray-800 text-gray-300">
+                      <BookOpen className="h-4 w-4 text-purple-400 mr-2" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mr-1.5">Examen:</span>
+                      <span className="text-sm font-medium text-white">{result.examTitle}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-3 mt-6">
-                    <h4 className="font-bold text-gray-700 uppercase text-xs sm:text-sm tracking-wider">Détail par question</h4>
+                  <div className="space-y-4">
+                    <h4 className="font-extrabold text-white text-xs sm:text-sm uppercase tracking-wider block ml-1 mb-2">Détail des questions</h4>
+                    
                     {result.answers.map((ans, i) => (
-                      <div key={i} className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-green-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                         <div className="flex-1">
-                           <span className="font-semibold text-gray-800 text-sm sm:text-base">Question {i + 1}</span>
-                           <p className="text-xs text-gray-500 mt-1">Réponse : {ans.extractedText}</p>
-                           {ans.justification && (
-                             <p className="text-xs text-indigo-600 mt-2 bg-indigo-50 p-2 rounded">
-                               🤖 <strong>Explication de l'IA:</strong> {ans.justification}
-                             </p>
-                           )}
-                           
-                           {/* Alerte de plagiat */}
-                           {(ans.plagiarismRisk === 'medium' || ans.plagiarismRisk === 'high') && (
-                             <div className={`mt-2 text-xs p-2 rounded flex items-start gap-1.5 border ${
-                               ans.plagiarismRisk === 'high' 
-                                 ? 'bg-red-50 text-red-700 border-red-200' 
-                                 : 'bg-orange-50 text-orange-700 border-orange-200'
-                             }`}>
-                               <AlertTriangle className="h-4 w-4 shrink-0" />
-                               <div>
-                                 <strong>{ans.plagiarismRisk === 'high' ? 'Risque de Plagiat Élevé' : 'Alerte IA/Plagiat Possible'} :</strong> {ans.plagiarismDetails}
-                               </div>
+                      <div key={i} className="bg-gray-900 border border-gray-800/80 p-4 sm:p-5 rounded-2xl shadow-sm hover:border-gray-700 transition-colors flex flex-col gap-4">
+                         
+                         {/* Question Header */}
+                         <div className="flex justify-between items-center">
+                           <span className="font-bold text-white text-sm sm:text-base">Question {i + 1}</span>
+                           <div className={`px-3 py-1 rounded-lg font-bold text-xs border ${ans.isCorrect ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+                             {ans.score} pts
+                           </div>
+                         </div>
+
+                         {/* Extracted Answer */}
+                         <div className="space-y-1">
+                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Réponse lue sur la copie :</p>
+                           <p className="text-sm text-gray-300 italic bg-gray-950 p-3 rounded-xl border border-gray-800 font-mono">
+                             "{ans.extractedText || '(Vide)'}"
+                           </p>
+                         </div>
+
+                         {/* Explanation */}
+                         {ans.justification && (
+                           <div className="text-xs sm:text-sm text-indigo-300 bg-indigo-500/5 p-3.5 rounded-xl border border-indigo-500/10">
+                             <div className="font-semibold text-indigo-400 mb-1 flex items-center gap-1.5">
+                               🤖 <span>Analyse de l'IA:</span>
                              </div>
-                           )}
-                         </div>
-                         <div className={`px-3 py-1 rounded-lg font-bold w-fit text-sm shrink-0 self-start sm:self-center ${ans.isCorrect ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                           {ans.score} pts
-                         </div>
+                             <p className="leading-relaxed opacity-95">{ans.justification}</p>
+                           </div>
+                         )}
+                         
+                         {/* Plagiarism Risk */}
+                         {(ans.plagiarismRisk === 'medium' || ans.plagiarismRisk === 'high') && (
+                           <div className={`text-xs p-3.5 rounded-xl flex items-start gap-2.5 border ${
+                             ans.plagiarismRisk === 'high' 
+                               ? 'bg-red-500/5 text-red-300 border-red-500/10' 
+                               : 'bg-orange-500/5 text-orange-300 border-orange-500/10'
+                           }`}>
+                             <AlertTriangle className={`h-5 w-5 shrink-0 ${ans.plagiarismRisk === 'high' ? 'text-red-400' : 'text-orange-400'}`} />
+                             <div>
+                               <strong className="block text-white mb-0.5">
+                                 {ans.plagiarismRisk === 'high' ? 'Alerte : Risque de plagiat élevé' : 'Alerte : Plagiat possible'}
+                               </strong>
+                               <span className="opacity-80">{ans.plagiarismDetails}</span>
+                             </div>
+                           </div>
+                         )}
                       </div>
                     ))}
                   </div>
@@ -298,22 +346,25 @@ const ScanCopy = () => {
 
       {/* Conflict Modal */}
       {conflictData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center">
-              <AlertCircle className="h-6 w-6 text-orange-500 mr-2" />
-              <h3 className="text-lg font-bold text-orange-800">Copies multiples détectées</h3>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative">
+            <div className="bg-orange-950/20 px-6 py-5 border-b border-orange-500/20 flex items-center">
+              <AlertCircle className="h-6 w-6 text-orange-400 mr-2.5 shrink-0" />
+              <h3 className="text-lg font-bold text-orange-200">Copies multiples détectées</h3>
             </div>
             
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                L'élève <strong>{conflictData.enrichedResult.studentName}</strong> a déjà rendu {conflictData.existingSubmissions.length} copie(s) pour l'examen <strong>{conflictData.enrichedResult.examTitle}</strong>.
+            <div className="p-6 space-y-6">
+              <p className="text-sm text-gray-300 leading-relaxed">
+                L'élève <strong className="text-white font-semibold">{conflictData.enrichedResult.studentName}</strong> a déjà rendu <span className="text-indigo-400 font-bold">{conflictData.existingSubmissions.length} copie(s)</span> pour l'examen <strong className="text-white font-semibold">{conflictData.enrichedResult.examTitle}</strong>.
               </p>
               
-              <p className="text-sm font-semibold text-gray-600 mb-3">Que souhaitez-vous faire avec cette nouvelle copie scannée (Note: {conflictData.unsavedSubmission.totalScore}) ?</p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quelle action souhaitez-vous effectuer ?</p>
+                <p className="text-xs text-gray-500">(Nouvelle note scannée : <span className="text-white font-semibold">{conflictData.unsavedSubmission.totalScore} pts</span>)</p>
+              </div>
               
-              <div className="space-y-3 mb-6">
-                <label className={`block border rounded-xl p-4 cursor-pointer transition-colors ${selectedVersion === 'new' ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+              <div className="space-y-3">
+                <label className={`block border rounded-xl p-4 cursor-pointer transition-all ${selectedVersion === 'new' ? 'bg-indigo-600/10 border-indigo-500 text-white' : 'bg-gray-950/40 border-gray-800 text-gray-300 hover:bg-gray-950/80'}`}>
                   <div className="flex items-center">
                     <input 
                       type="radio" 
@@ -321,15 +372,15 @@ const ScanCopy = () => {
                       value="new"
                       checked={selectedVersion === 'new'}
                       onChange={() => setSelectedVersion('new')}
-                      className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                      className="h-4 w-4 text-indigo-600 border-gray-800 bg-gray-950 focus:ring-indigo-500"
                     />
-                    <span className="ml-3 font-medium text-gray-900">Ajouter comme nouvelle version</span>
+                    <span className="ml-3 font-semibold text-sm">Ajouter comme nouvelle version</span>
                   </div>
-                  <p className="ml-7 mt-1 text-sm text-gray-500">Utile si l'examen comporte plusieurs pages ou parties.</p>
+                  <p className="ml-7 mt-1 text-xs text-gray-500 leading-normal">Permet de sauvegarder cette copie sans supprimer les versions antérieures.</p>
                 </label>
 
                 {conflictData.existingSubmissions.map((sub, idx) => (
-                  <label key={sub._id} className={`block border rounded-xl p-4 cursor-pointer transition-colors ${selectedVersion === sub._id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                  <label key={sub._id} className={`block border rounded-xl p-4 cursor-pointer transition-all ${selectedVersion === sub._id ? 'bg-indigo-600/10 border-indigo-500 text-white' : 'bg-gray-950/40 border-gray-800 text-gray-300 hover:bg-gray-950/80'}`}>
                     <div className="flex items-center">
                       <input 
                         type="radio" 
@@ -337,32 +388,32 @@ const ScanCopy = () => {
                         value={sub._id}
                         checked={selectedVersion === sub._id}
                         onChange={() => setSelectedVersion(sub._id)}
-                        className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        className="h-4 w-4 text-indigo-600 border-gray-800 bg-gray-950 focus:ring-indigo-500"
                       />
-                      <span className="ml-3 font-medium text-gray-900">Remplacer la copie existante #{idx + 1}</span>
+                      <span className="ml-3 font-semibold text-sm">Remplacer la copie existante #{conflictData.existingSubmissions.length - idx}</span>
                     </div>
-                    <p className="ml-7 mt-1 text-sm text-gray-500">
+                    <p className="ml-7 mt-1 text-xs text-gray-500 leading-normal">
                       Scannée le : {new Date(sub.createdAt).toLocaleString('fr-FR')} <br/>
-                      Ancienne note : <span className="font-bold">{sub.totalScore}</span> pts
+                      Ancienne note : <span className="font-semibold text-gray-300">{sub.totalScore}</span> pts
                     </p>
                   </label>
                 ))}
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-2">
                 <button 
                   onClick={() => { setConflictData(null); setLoading(false); }}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                  className="px-4.5 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 font-semibold rounded-xl transition-colors cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button 
                   onClick={handleResolveConflict}
                   disabled={loading}
-                  className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center disabled:opacity-50"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/10 flex items-center disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                  Confirmer le choix
+                  Confirmer la sélection
                 </button>
               </div>
             </div>

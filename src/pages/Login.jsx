@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, GraduationCap } from 'lucide-react';
 import { API_URL } from '../config';
 
 const Login = () => {
@@ -19,76 +19,117 @@ const Login = () => {
       localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
     } catch (err) {
-      alert(err.response?.data?.msg || 'Erreur');
+      alert(err.response?.data?.msg || 'Erreur d\'authentification');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          {isLogin ? 'Connexion' : 'Inscription'}
-        </h2>
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-indigo-950 flex items-center justify-center p-4 overflow-hidden">
+      {/* Decorative background glows */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="relative w-full max-w-md bg-gray-900/60 backdrop-blur-xl border border-gray-800 p-8 rounded-3xl shadow-2xl shadow-black/50 overflow-hidden">
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20 mb-3 shadow-inner">
+            <GraduationCap className="h-10 w-10 text-indigo-400" />
+          </div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent tracking-tight">
+            EduGrade
+          </h1>
+          <p className="text-gray-400 text-sm mt-1 text-center font-light">
+            {isLogin ? 'Connectez-vous pour gérer vos copies d\'examens' : 'Créez votre compte enseignant'}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nom</label>
-              <input 
-                type="text" 
-                required 
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
-              />
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block ml-1">Nom Complet</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                  <User className="h-4 w-4" />
+                </div>
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full bg-gray-950/50 border border-gray-800 text-white pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder-gray-600 shadow-inner"
+                  placeholder="Ex: Professeur Adam"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
             </div>
           )}
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input 
-              type="email" 
-              required 
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              value={formData.email}
-              autoComplete="username"
-              onChange={e => setFormData({...formData, email: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block ml-1">Adresse Email</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                <Mail className="h-4 w-4" />
+              </div>
+              <input 
+                type="email" 
+                required 
+                className="w-full bg-gray-950/50 border border-gray-800 text-white pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder-gray-600 shadow-inner"
+                placeholder="Ex: adam@gmail.com"
+                autoComplete="username"
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
-            <input 
-              type="password" 
-              required 
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              value={formData.password}
-              autoComplete="current-password"
-              onChange={e => setFormData({...formData, password: e.target.value})}
-            />
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block ml-1">Mot de passe</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                <Lock className="h-4 w-4" />
+              </div>
+              <input 
+                type="password" 
+                required 
+                className="w-full bg-gray-950/50 border border-gray-800 text-white pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all placeholder-gray-600 shadow-inner"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                value={formData.password}
+                onChange={e => setFormData({...formData, password: e.target.value})}
+              />
+            </div>
           </div>
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium disabled:opacity-50 transition-all"
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl text-sm tracking-wide shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all duration-200 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           >
-            {loading ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : (isLogin ? 'Se connecter' : "S'inscrire")}
+            {loading ? (
+              <Loader2 className="animate-spin h-5 w-5" />
+            ) : (
+              <>
+                <span>{isLogin ? 'Se connecter' : "S'inscrire"}</span>
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
-          {isLogin ? "Pas de compte ?" : "Déjà un compte ?"}
-          <button 
-            type="button"
-            onClick={() => setIsLogin(!isLogin)} 
-            className="font-medium text-indigo-600 hover:text-indigo-500 ml-1 focus:outline-none"
-          >
-            {isLogin ? "S'inscrire" : "Se connecter"}
-          </button>
-        </p>
+        <div className="mt-6 pt-6 border-t border-gray-800/60 text-center">
+          <p className="text-sm text-gray-400">
+            {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}
+            <button 
+              type="button"
+              onClick={() => setIsLogin(!isLogin)} 
+              className="font-semibold text-indigo-400 hover:text-indigo-300 ml-1.5 focus:outline-none transition-colors"
+            >
+              {isLogin ? "S'inscrire" : "Se connecter"}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
