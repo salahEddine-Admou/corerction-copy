@@ -304,8 +304,8 @@ const Dashboard = () => {
                           <span>{exam.totalPoints} pts</span>
                           <span>{new Date(exam.createdAt).toLocaleDateString()}</span>
                         </div>
-                        <Link to={`/grade-exam/${exam._id}`} className="block text-center text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition-colors">
-                          Corriger
+                        <Link to={`/exam/${exam._id}`} className="block text-center text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 px-4 py-2.5 rounded-xl transition-colors border border-gray-700">
+                          Voir les détails
                         </Link>
                       </div>
                     </div>
