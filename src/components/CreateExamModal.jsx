@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Plus, Save, Trash2, Loader2, X } from 'lucide-react';
+import { API_URL } from '../config';
 
 const CreateExamModal = ({ isOpen, onClose, onExamCreated }) => {
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ const CreateExamModal = ({ isOpen, onClose, onExamCreated }) => {
       }));
 
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/exams', 
+      const res = await axios.post(`${API_URL}/api/exams`, 
         { title, description, questions: formattedQuestions },
         { headers: { 'x-auth-token': token } }
       );

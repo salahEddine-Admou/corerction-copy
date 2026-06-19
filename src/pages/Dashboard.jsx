@@ -3,8 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { LogOut, Plus, FileText, Users, Loader2, ScanLine, Trash2, Edit2, X, Check, UserPlus, LayoutDashboard, GraduationCap, Menu, ChevronLeft } from 'lucide-react';
 import CreateExamModal from '../components/CreateExamModal';
-
-const API = 'http://localhost:5000';
+import { API_URL } from '../config';
 
 const Dashboard = () => {
   const [exams, setExams] = useState([]);
@@ -32,8 +31,8 @@ const Dashboard = () => {
         const headers = { 'x-auth-token': token };
         setLoading(true);
         const [examsRes, studentsRes] = await Promise.all([
-          axios.get(`${API}/api/exams`, { headers }),
-          axios.get(`${API}/api/students`, { headers })
+          axios.get(`${API_URL}/api/exams`, { headers }),
+          axios.get(`${API_URL}/api/students`, { headers })
         ]);
         setExams(examsRes.data);
         setStudents(studentsRes.data);
@@ -56,7 +55,7 @@ const Dashboard = () => {
     e.preventDefault();
     setStudentLoading(true);
     try {
-      const res = await axios.post(`${API}/api/students`, newStudent, { headers: getHeaders() });
+      const res = await axios.post(`${API_URL}/api/students`, newStudent, { headers: getHeaders() });
       setStudents([res.data, ...students]);
       setNewStudent({ firstName: '', lastName: '', matricule: '', className: '' });
       setShowAddForm(false);
@@ -70,7 +69,7 @@ const Dashboard = () => {
   const handleDeleteStudent = async (id) => {
     if (!window.confirm('Supprimer cet élève ?')) return;
     try {
-      await axios.delete(`${API}/api/students/${id}`, { headers: getHeaders() });
+      await axios.delete(`${API_URL}/api/students/${id}`, { headers: getHeaders() });
       setStudents(students.filter(s => s._id !== id));
     } catch (err) {
       alert('Erreur lors de la suppression');
@@ -85,7 +84,7 @@ const Dashboard = () => {
   const handleEditStudent = async () => {
     setStudentLoading(true);
     try {
-      const res = await axios.put(`${API}/api/students/${editingId}`, editData, { headers: getHeaders() });
+      const res = await axios.put(`${API_URL}/api/students/${editingId}`, editData, { headers: getHeaders() });
       setStudents(students.map(s => s._id === editingId ? res.data : s));
       setEditingId(null);
     } catch (err) {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Webcam from 'react-webcam';
 import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon } from 'lucide-react';
+import { API_URL } from '../config';
 
 const GradeExam = () => {
   const { id } = useParams();
@@ -22,7 +23,7 @@ const GradeExam = () => {
       try {
         const token = localStorage.getItem('token');
         const headers = { 'x-auth-token': token };
-        const examRes = await axios.get(`http://localhost:5000/api/exams/${id}`, { headers });
+        const examRes = await axios.get(`${API_URL}/api/exams/${id}`, { headers });
         setExam(examRes.data);
       } catch (err) {
         console.error(err);
@@ -76,7 +77,7 @@ const GradeExam = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post(
-        `http://localhost:5000/api/submissions/grade/${id}`, 
+        `${API_URL}/api/submissions/grade/${id}`, 
         formData, 
         { headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' } }
       );

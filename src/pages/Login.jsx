@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { API_URL } from '../config';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,7 +15,7 @@ const Login = () => {
     setLoading(true);
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const res = await axios.post(`http://localhost:5000${endpoint}`, formData);
+      const res = await axios.post(`${API_URL}${endpoint}`, formData);
       localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
     } catch (err) {

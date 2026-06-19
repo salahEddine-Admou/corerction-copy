@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Webcam from 'react-webcam';
-import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen, Loader2 } from 'lucide-react';
+import { API_URL } from '../config';
 
 const ScanCopy = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const ScanCopy = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post(
-        'http://localhost:5000/api/submissions/scan', 
+        `${API_URL}/api/submissions/scan`, 
         formData, 
         { headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' } }
       );
