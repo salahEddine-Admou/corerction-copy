@@ -11,7 +11,8 @@ const ExamDetails = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('results'); // 'results' or 'questions'
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [selectedStudentGroup, setSelectedStudentGroup] = useState(null);
+  const [activeVersionIndex, setActiveVersionIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,6 +46,26 @@ const ExamDetails = () => {
   }
 
   if (!exam) return <div className="p-8 text-center text-gray-500">Examen introuvable.</div>;
+
+  // Grouper les soumissions par élève
+  const groupedSubmissions = submissions.reduce((acc, sub) => {
+    if (!sub.student) return acc;
+    const studentId = sub.student._id;
+    if (!acc[studentId]) {
+      acc[studentId] = {
+        student: sub.student,
+        versions: []
+      };
+    }
+    acc[studentId].versions.push(sub);
+    return acc;
+  }, {});
+
+  // Convertir en tableau et trier les versions de la plus récente à la plus ancienne pour chaque élève
+  const uniqueStudents = Object.values(groupedSubmissions).map(group => {
+    group.versions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return group;
+  });
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
@@ -96,7 +117,7 @@ const ExamDetails = () => {
             onClick={() => setActiveTab('results')}
             className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${activeTab === 'results' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}
           >
-            <Users className="h-4 w-4 mr-2" /> Résultats ({submissions.length})
+            <Users className="h-4 w-4 mr-2" /> Résultats ({uniqueStudents.length} élèves)
           </button>
           <button 
             onClick={() => setActiveTab('questions')}
@@ -130,31 +151,45 @@ const ExamDetails = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800/50">
-                    {submissions.map(sub => (
-                      <tr key={sub._id} className="hover:bg-gray-800/30 transition-colors">
-                        <td className="p-4">
-                          <div className="font-medium text-white">{sub.student?.firstName} {sub.student?.lastName}</div>
-                          <div className="text-xs text-gray-500 font-mono mt-0.5">{sub.student?.matricule}</div>
-                        </td>
-                        <td className="p-4 text-sm text-gray-400">
-                          {new Date(sub.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}
-                        </td>
-                        <td className="p-4">
-                          <div className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-gray-800 border border-gray-700">
-                            <span className={sub.totalScore >= (exam.totalPoints / 2) ? 'text-green-400' : 'text-orange-400'}>
-                              {sub.totalScore}
-                            </span>
-                            <span className="text-gray-500 mx-1">/</span>
-                            <span className="text-gray-400">{exam.totalPoints}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => setSelectedSubmission(sub)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium hover:underline flex items-center justify-end w-full">
-                            Détails <ChevronRight className="h-4 w-4 ml-1" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {uniqueStudents.map(group => {
+                      const latestVersion = group.versions[0];
+                      return (
+                        <tr key={group.student._id} className="hover:bg-gray-800/30 transition-colors">
+                          <td className="p-4">
+                            <div className="font-medium text-white">{group.student.firstName} {group.student.lastName}</div>
+                            <div className="text-xs text-gray-500 font-mono mt-0.5">{group.student.matricule}</div>
+                          </td>
+                          <td className="p-4 text-sm text-gray-400">
+                            {new Date(latestVersion.createdAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}
+                            {group.versions.length > 1 && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-gray-300 border border-gray-700">
+                                {group.versions.length} versions
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-gray-800 border border-gray-700">
+                              <span className={latestVersion.totalScore >= (exam.totalPoints / 2) ? 'text-green-400' : 'text-orange-400'}>
+                                {latestVersion.totalScore}
+                              </span>
+                              <span className="text-gray-500 mx-1">/</span>
+                              <span className="text-gray-400">{exam.totalPoints}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-right">
+                            <button 
+                              onClick={() => {
+                                setSelectedStudentGroup(group);
+                                setActiveVersionIndex(0); // Select the latest version by default
+                              }} 
+                              className="text-indigo-400 hover:text-indigo-300 text-sm font-medium hover:underline flex items-center justify-end w-full"
+                            >
+                              Détails <ChevronRight className="h-4 w-4 ml-1" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -196,81 +231,128 @@ const ExamDetails = () => {
       </main>
 
       {/* Submission Details Modal */}
-      {selectedSubmission && (
+      {selectedStudentGroup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden my-8">
             {/* Modal Header */}
             <div className="bg-gray-800 px-6 py-4 flex justify-between items-center border-b border-gray-700">
               <div>
                 <h3 className="text-xl font-bold text-white">
-                  Copie de {selectedSubmission.student?.firstName} {selectedSubmission.student?.lastName}
+                  Copies de {selectedStudentGroup.student.firstName} {selectedStudentGroup.student.lastName}
                 </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Note: <span className={selectedSubmission.totalScore >= (exam.totalPoints / 2) ? 'text-green-400 font-bold' : 'text-orange-400 font-bold'}>{selectedSubmission.totalScore}</span> / {exam.totalPoints} pts
-                </p>
               </div>
               <button 
-                onClick={() => setSelectedSubmission(null)}
+                onClick={() => {
+                  setSelectedStudentGroup(null);
+                  setActiveVersionIndex(0);
+                }}
                 className="text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-700 p-2 rounded-full transition-colors"
               >
                 <XCircle className="h-6 w-6" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
-              {selectedSubmission.scannedImage && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Image Scannée</h4>
-                  <div className="bg-gray-950 p-2 rounded-xl border border-gray-800">
-                    <img 
-                      src={`${API_URL}/${selectedSubmission.scannedImage}`} 
-                      alt="Copie scannée" 
-                      className="max-h-64 mx-auto rounded-lg object-contain"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.parentElement.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">Image non disponible</p>';
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Détail des réponses</h4>
-              <div className="space-y-4">
-                {selectedSubmission.answers.map((ans, i) => (
-                  <div key={i} className="bg-gray-950 p-4 rounded-xl shadow-sm border border-gray-800 flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                      <span className="font-semibold text-white">Question {i + 1}</span>
-                      <div className={`px-3 py-1 rounded-lg font-bold text-sm shrink-0 ${ans.isCorrect ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}`}>
-                        {ans.score} pts
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Texte lu par l'IA :</p>
-                      <p className="text-gray-300 text-sm italic bg-gray-900 p-2 rounded border border-gray-800">
-                        "{ans.extractedText}"
-                      </p>
-                    </div>
-
-                    {ans.justification && (
-                      <div className="mt-2 text-sm text-indigo-300 bg-indigo-500/10 p-3 rounded-lg border border-indigo-500/20">
-                        <span className="block font-semibold mb-1 flex items-center">
-                          🤖 Justification de la note :
-                        </span>
-                        {ans.justification}
-                      </div>
-                    )}
-                  </div>
+            {/* Version Tabs */}
+            {selectedStudentGroup.versions.length > 1 && (
+              <div className="bg-gray-800/50 px-6 py-2 border-b border-gray-700 flex overflow-x-auto gap-2">
+                {selectedStudentGroup.versions.map((version, idx) => (
+                  <button
+                    key={version._id}
+                    onClick={() => setActiveVersionIndex(idx)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                      activeVersionIndex === idx 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    Version {selectedStudentGroup.versions.length - idx}
+                    <span className="ml-2 text-xs opacity-70">({version.totalScore} pts)</span>
+                  </button>
                 ))}
               </div>
+            )}
+
+            {/* Modal Body */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {(() => {
+                const currentVersion = selectedStudentGroup.versions[activeVersionIndex];
+                return (
+                  <>
+                    <div className="mb-6 flex justify-between items-center bg-gray-950 p-4 rounded-xl border border-gray-800">
+                      <div>
+                        <p className="text-sm text-gray-400">Date de scan</p>
+                        <p className="text-white font-medium">{new Date(currentVersion.createdAt).toLocaleString('fr-FR')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">Note Globale</p>
+                        <p className="text-xl">
+                          <span className={currentVersion.totalScore >= (exam.totalPoints / 2) ? 'text-green-400 font-bold' : 'text-orange-400 font-bold'}>
+                            {currentVersion.totalScore}
+                          </span> 
+                          <span className="text-gray-500 mx-1">/</span> 
+                          <span className="text-gray-300">{exam.totalPoints} pts</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {currentVersion.scannedImage && (
+                      <div className="mb-6">
+                        <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Image Scannée</h4>
+                        <div className="bg-gray-950 p-2 rounded-xl border border-gray-800">
+                          <img 
+                            src={`${API_URL}/${currentVersion.scannedImage}`} 
+                            alt="Copie scannée" 
+                            className="max-h-64 mx-auto rounded-lg object-contain"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">Image non disponible</p>';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Détail des réponses</h4>
+                    <div className="space-y-4">
+                      {currentVersion.answers.map((ans, i) => (
+                        <div key={i} className="bg-gray-950 p-4 rounded-xl shadow-sm border border-gray-800 flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                            <span className="font-semibold text-white">Question {i + 1}</span>
+                            <div className={`px-3 py-1 rounded-lg font-bold text-sm shrink-0 ${ans.isCorrect ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}`}>
+                              {ans.score} pts
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Texte lu par l'IA :</p>
+                            <p className="text-gray-300 text-sm italic bg-gray-900 p-2 rounded border border-gray-800">
+                              "{ans.extractedText}"
+                            </p>
+                          </div>
+
+                          {ans.justification && (
+                            <div className="mt-2 text-sm text-indigo-300 bg-indigo-500/10 p-3 rounded-lg border border-indigo-500/20">
+                              <span className="block font-semibold mb-1 flex items-center">
+                                🤖 Justification de la note :
+                              </span>
+                              {ans.justification}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             
             {/* Modal Footer */}
             <div className="bg-gray-800 px-6 py-4 border-t border-gray-700 flex justify-end">
               <button 
-                onClick={() => setSelectedSubmission(null)}
+                onClick={() => {
+                  setSelectedStudentGroup(null);
+                  setActiveVersionIndex(0);
+                }}
                 className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
               >
                 Fermer
