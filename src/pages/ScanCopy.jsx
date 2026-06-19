@@ -1,41 +1,27 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Webcam from 'react-webcam';
-import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen } from 'lucide-react';
 
-const GradeExam = () => {
-  const { id } = useParams();
+const ScanCopy = () => {
   const navigate = useNavigate();
-  const [exam, setExam] = useState(null);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
   
   // Camera state
   const [useCamera, setUseCamera] = useState(false);
   const webcamRef = useRef(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const headers = { 'x-auth-token': token };
-        const examRes = await axios.get(`http://localhost:5000/api/exams/${id}`, { headers });
-        setExam(examRes.data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchData();
-  }, [id]);
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (selected) {
       setFile(selected);
       setPreview(URL.createObjectURL(selected));
+      setError(null);
     }
   };
 
@@ -57,12 +43,15 @@ const GradeExam = () => {
       setPreview(imageSrc);
       setFile(dataURLtoFile(imageSrc, 'captured_exam.jpg'));
       setUseCamera(false);
+      setError(null);
     }
   }, [webcamRef]);
 
   const resetSelection = () => {
     setFile(null);
     setPreview(null);
+    setResult(null);
+    setError(null);
   }
 
   const handleUpload = async (e) => {
@@ -73,26 +62,26 @@ const GradeExam = () => {
     formData.append('scannedImage', file);
 
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post(
-        `http://localhost:5000/api/submissions/grade/${id}`, 
+        'http://localhost:5000/api/submissions/scan', 
         formData, 
         { headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' } }
       );
       setResult(res.data);
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.msg) {
-        alert(err.response.data.msg + (err.response.data.extractedName ? ` (Nom extrait: ${err.response.data.extractedName})` : ''));
+      if (err.response && err.response.data) {
+        setError(err.response.data);
       } else {
-        alert('Erreur lors de la correction OCR/IA');
+        setError({ msg: 'Erreur de connexion au serveur.' });
       }
     } finally {
       setLoading(false);
     }
   };
-
-  if (!exam) return <div className="p-8 text-center text-gray-500">Chargement...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
@@ -103,22 +92,17 @@ const GradeExam = () => {
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 text-white">
-            <h2 className="text-2xl sm:text-3xl font-bold">{exam.title}</h2>
-            <p className="mt-2 opacity-90">{exam.description}</p>
-            <div className="mt-4 inline-block bg-white/20 px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
-              {exam.totalPoints} Points Total
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold">📄 Scanner une copie</h2>
+            <p className="mt-2 opacity-90">Scannez une copie d'examen et l'IA identifie automatiquement l'élève, l'examen et corrige les réponses.</p>
           </div>
 
           <div className="p-4 sm:p-8">
             <form onSubmit={handleUpload} className="bg-gray-50 p-4 sm:p-6 rounded-2xl border border-gray-200">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                <FileScan className="mr-2 text-indigo-500"/> Scanner & Corriger une copie
+                <FileScan className="mr-2 text-indigo-500"/> Fournir l'image de la copie
               </h3>
               
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Fournir l'image de la copie</label>
-                
                 {/* Method selector */}
                 {!preview && (
                   <div className="flex bg-gray-200 rounded-lg p-1 mb-4 max-w-sm">
@@ -174,14 +158,61 @@ const GradeExam = () => {
               </button>
             </form>
 
+            {/* Error display */}
+            {error && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6">
+                <div className="flex items-center mb-2">
+                  <AlertCircle className="h-6 w-6 text-red-500 mr-2 shrink-0" />
+                  <h3 className="text-lg font-bold text-red-800">{error.msg}</h3>
+                </div>
+                {error.extractedData && (
+                  <div className="mt-3 text-sm text-red-700 space-y-1">
+                    <p>📝 Examen détecté : <strong>{error.extractedData.examTitle || 'Non trouvé'}</strong></p>
+                    <p>👤 Élève détecté : <strong>{error.extractedData.studentName || 'Non trouvé'}</strong></p>
+                  </div>
+                )}
+                {error.availableExams && (
+                  <div className="mt-3 text-sm text-red-600">
+                    <p className="font-medium">Examens disponibles :</p>
+                    <ul className="list-disc ml-5 mt-1">
+                      {error.availableExams.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {error.availableStudents && (
+                  <div className="mt-3 text-sm text-red-600">
+                    <p className="font-medium">Élèves disponibles :</p>
+                    <ul className="list-disc ml-5 mt-1">
+                      {error.availableStudents.map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Success result */}
             {result && (
               <div className="mt-8 animate-fade-in-up">
                 <div className="bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-6">
+                  
+                  {/* Header with detected info */}
                   <div className="flex items-center mb-4">
                     <CheckCircle className="h-8 w-8 text-green-500 mr-3 shrink-0" />
                     <div>
                       <h3 className="text-lg sm:text-xl font-bold text-green-800">Correction Terminée</h3>
-                      <p className="text-green-600 text-sm sm:text-base">Note Globale : <span className="font-bold text-2xl">{result.totalScore}</span> / {exam.totalPoints}</p>
+                      <p className="text-green-600 text-sm sm:text-base">Note Globale : <span className="font-bold text-2xl">{result.totalScore}</span> / {result.totalPoints}</p>
+                    </div>
+                  </div>
+
+                  {/* Detected info badges */}
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    <div className="flex items-center bg-white px-3 py-2 rounded-lg border border-green-200">
+                      <User className="h-4 w-4 text-indigo-500 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">{result.studentName}</span>
+                    </div>
+                    <div className="flex items-center bg-white px-3 py-2 rounded-lg border border-green-200">
+                      <BookOpen className="h-4 w-4 text-purple-500 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">{result.examTitle}</span>
                     </div>
                   </div>
 
@@ -191,7 +222,7 @@ const GradeExam = () => {
                       <div key={i} className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-green-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                          <div className="flex-1">
                            <span className="font-semibold text-gray-800 text-sm sm:text-base">Question {i + 1}</span>
-                           <p className="text-xs text-gray-500 mt-1">Détection: {ans.extractedText}</p>
+                           <p className="text-xs text-gray-500 mt-1">Réponse : {ans.extractedText}</p>
                            {ans.justification && (
                              <p className="text-xs text-indigo-600 mt-2 bg-indigo-50 p-2 rounded">
                                🤖 <strong>Explication de l'IA:</strong> {ans.justification}
@@ -214,4 +245,4 @@ const GradeExam = () => {
   );
 };
 
-export default GradeExam;
+export default ScanCopy;

@@ -14,7 +14,7 @@ const Login = () => {
     setLoading(true);
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const res = await axios.post(`https://coorection-copy-server.vercel.app${endpoint}`, formData);
+      const res = await axios.post(`http://localhost:5000${endpoint}`, formData);
       localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
     } catch (err) {
