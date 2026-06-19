@@ -12,6 +12,8 @@ const ScanCopy = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [conflictData, setConflictData] = useState(null);
+  const [selectedVersion, setSelectedVersion] = useState('new'); // 'new' or existing id
   
   // Camera state
   const [useCamera, setUseCamera] = useState(false);
@@ -53,7 +55,39 @@ const ScanCopy = () => {
     setPreview(null);
     setResult(null);
     setError(null);
+    setConflictData(null);
   }
+
+  const handleResolveConflict = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'x-auth-token': token };
+      
+      let res;
+      if (selectedVersion === 'new') {
+        res = await axios.post(`${API_URL}/api/submissions/confirm-new`, {
+          submissionData: conflictData.unsavedSubmission
+        }, { headers });
+      } else {
+        res = await axios.put(`${API_URL}/api/submissions/replace/${selectedVersion}`, {
+          submissionData: conflictData.unsavedSubmission
+        }, { headers });
+      }
+
+      setResult({
+        ...res.data,
+        examTitle: conflictData.enrichedResult.examTitle,
+        studentName: conflictData.enrichedResult.studentName,
+        totalPoints: conflictData.enrichedResult.totalPoints
+      });
+      setConflictData(null);
+    } catch (err) {
+      setError({ msg: 'Erreur lors de la résolution du conflit.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -72,7 +106,12 @@ const ScanCopy = () => {
         formData, 
         { headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' } }
       );
-      setResult(res.data);
+      
+      if (res.data.conflict) {
+        setConflictData(res.data);
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
       if (err.response && err.response.data) {
         setError(err.response.data);
@@ -242,6 +281,80 @@ const ScanCopy = () => {
           </div>
         </div>
       </div>
+
+      {/* Conflict Modal */}
+      {conflictData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center">
+              <AlertCircle className="h-6 w-6 text-orange-500 mr-2" />
+              <h3 className="text-lg font-bold text-orange-800">Copies multiples détectées</h3>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                L'élève <strong>{conflictData.enrichedResult.studentName}</strong> a déjà rendu {conflictData.existingSubmissions.length} copie(s) pour l'examen <strong>{conflictData.enrichedResult.examTitle}</strong>.
+              </p>
+              
+              <p className="text-sm font-semibold text-gray-600 mb-3">Que souhaitez-vous faire avec cette nouvelle copie scannée (Note: {conflictData.unsavedSubmission.totalScore}) ?</p>
+              
+              <div className="space-y-3 mb-6">
+                <label className={`block border rounded-xl p-4 cursor-pointer transition-colors ${selectedVersion === 'new' ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                  <div className="flex items-center">
+                    <input 
+                      type="radio" 
+                      name="version_choice" 
+                      value="new"
+                      checked={selectedVersion === 'new'}
+                      onChange={() => setSelectedVersion('new')}
+                      className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span className="ml-3 font-medium text-gray-900">Ajouter comme nouvelle version</span>
+                  </div>
+                  <p className="ml-7 mt-1 text-sm text-gray-500">Utile si l'examen comporte plusieurs pages ou parties.</p>
+                </label>
+
+                {conflictData.existingSubmissions.map((sub, idx) => (
+                  <label key={sub._id} className={`block border rounded-xl p-4 cursor-pointer transition-colors ${selectedVersion === sub._id ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                    <div className="flex items-center">
+                      <input 
+                        type="radio" 
+                        name="version_choice" 
+                        value={sub._id}
+                        checked={selectedVersion === sub._id}
+                        onChange={() => setSelectedVersion(sub._id)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                      />
+                      <span className="ml-3 font-medium text-gray-900">Remplacer la copie existante #{idx + 1}</span>
+                    </div>
+                    <p className="ml-7 mt-1 text-sm text-gray-500">
+                      Scannée le : {new Date(sub.createdAt).toLocaleString('fr-FR')} <br/>
+                      Ancienne note : <span className="font-bold">{sub.totalScore}</span> pts
+                    </p>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => { setConflictData(null); setLoading(false); }}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 font-medium rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={handleResolveConflict}
+                  disabled={loading}
+                  className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                  Confirmer le choix
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
