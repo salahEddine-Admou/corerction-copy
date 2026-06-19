@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Loader2, FileText, CheckCircle2, ChevronRight, XCircle, FileScan, Users, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Loader2, FileText, CheckCircle2, ChevronRight, XCircle, FileScan, Users, GraduationCap, AlertTriangle } from 'lucide-react';
 import { API_URL } from '../config';
 
 const ExamDetails = () => {
@@ -336,6 +336,21 @@ const ExamDetails = () => {
                                 🤖 Justification de la note :
                               </span>
                               {ans.justification}
+                            </div>
+                          )}
+
+                          {/* Alerte de plagiat */}
+                          {(ans.plagiarismRisk === 'medium' || ans.plagiarismRisk === 'high') && (
+                            <div className={`mt-2 text-sm p-3 rounded-lg flex items-start gap-2 border ${
+                              ans.plagiarismRisk === 'high' 
+                                ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                            }`}>
+                              <AlertTriangle className="h-5 w-5 shrink-0" />
+                              <div>
+                                <strong className="block mb-1">{ans.plagiarismRisk === 'high' ? '⚠️ Risque de Plagiat Élevé' : '⚠️ Alerte IA/Plagiat Possible'}</strong>
+                                <span className="opacity-90">{ans.plagiarismDetails}</span>
+                              </div>
                             </div>
                           )}
                         </div>

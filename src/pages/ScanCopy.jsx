@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Webcam from 'react-webcam';
-import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle, FileScan, Camera, Image as ImageIcon, AlertCircle, User, BookOpen, Loader2, AlertTriangle } from 'lucide-react';
 import { API_URL } from '../config';
 
 const ScanCopy = () => {
@@ -267,6 +267,20 @@ const ScanCopy = () => {
                              <p className="text-xs text-indigo-600 mt-2 bg-indigo-50 p-2 rounded">
                                🤖 <strong>Explication de l'IA:</strong> {ans.justification}
                              </p>
+                           )}
+                           
+                           {/* Alerte de plagiat */}
+                           {(ans.plagiarismRisk === 'medium' || ans.plagiarismRisk === 'high') && (
+                             <div className={`mt-2 text-xs p-2 rounded flex items-start gap-1.5 border ${
+                               ans.plagiarismRisk === 'high' 
+                                 ? 'bg-red-50 text-red-700 border-red-200' 
+                                 : 'bg-orange-50 text-orange-700 border-orange-200'
+                             }`}>
+                               <AlertTriangle className="h-4 w-4 shrink-0" />
+                               <div>
+                                 <strong>{ans.plagiarismRisk === 'high' ? 'Risque de Plagiat Élevé' : 'Alerte IA/Plagiat Possible'} :</strong> {ans.plagiarismDetails}
+                               </div>
+                             </div>
                            )}
                          </div>
                          <div className={`px-3 py-1 rounded-lg font-bold w-fit text-sm shrink-0 self-start sm:self-center ${ans.isCorrect ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
