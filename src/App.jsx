@@ -4,8 +4,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ExamDetails from './pages/ExamDetails';
 import ScanCopy from './pages/ScanCopy';
+import Landing from './pages/Landing';
 
-// Evaluates the token on every navigation rather than once at app mount
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" replace />;
@@ -13,19 +13,20 @@ const ProtectedRoute = ({ children }) => {
 
 const PublicRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  return !token ? children : <Navigate to="/dashboard" replace />;
+  return token ? <Navigate to="/dashboard" replace /> : children;
 };
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-950 text-gray-100">
+      <div className="min-h-screen bg-slate-950">
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/exam/:id" element={<ProtectedRoute><ExamDetails /></ProtectedRoute>} />
           <Route path="/scan-copy" element={<ProtectedRoute><ScanCopy /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>

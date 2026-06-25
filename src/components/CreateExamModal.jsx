@@ -1,25 +1,74 @@
-import React, { useState } from 'react';
-import { Plus, Save, Trash2, Loader2, X } from 'lucide-react';
-import api from '../api';
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
+import { Plus, Save, Trash2, Loader2, X, Camera } from 'lucide-react';
+import { API_URL } from '../config';
 
 const CreateExamModal = ({ isOpen, onClose, onExamCreated }) => {
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([
-    { questionText: '', questionType: 'short', points: 1, expectedKeywords: '' }
+    { questionText: 'Question 1', questionType: 'short', points: 1, expectedKeywords: '' }
   ]);
+  const fileInputRef = useRef(null);
+
+  const handleSubjectPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setGenerating(true);
+    const formData = new FormData();
+    formData.append('subjectImage', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/api/exams/generate-rubric`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'x-auth-token': token
+        }
+      });
+
+      const { title: newTitle, description: newDescription, questions: newQuestions } = res.data;
+      if (newTitle) setTitle(newTitle);
+      if (newDescription) setDescription(newDescription);
+      if (newQuestions && newQuestions.length > 0) {
+        setQuestions(newQuestions.map(q => ({
+          questionText: q.questionText || '',
+          questionType: q.questionType || 'short',
+          points: q.points || 1,
+          expectedKeywords: Array.isArray(q.expectedKeywords) ? q.expectedKeywords.join(', ') : (q.expectedKeywords || '')
+        })));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la génération automatique du barème depuis le sujet.');
+    } finally {
+      setGenerating(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
 
   if (!isOpen) return null;
 
-  const handleAddQuestion = () => {
-    setQuestions([...questions, { questionText: '', questionType: 'short', points: 1, expectedKeywords: '' }]);
-  };
-
-  const handleRemoveQuestion = (index) => {
-    const newQ = [...questions];
-    newQ.splice(index, 1);
-    setQuestions(newQ);
+  const handleNumQuestionsChange = (value) => {
+    const count = Math.max(1, Math.min(30, Number(value) || 1));
+    let newQuestions = [...questions];
+    if (count > newQuestions.length) {
+      for (let i = newQuestions.length; i < count; i++) {
+        newQuestions.push({
+          questionText: `Question ${i + 1}`,
+          questionType: 'short',
+          points: 1,
+          expectedKeywords: ''
+        });
+      }
+    } else if (count < newQuestions.length) {
+      newQuestions = newQuestions.slice(0, count);
+    }
+    setQuestions(newQuestions);
   };
 
   const handleChange = (index, field, value) => {
@@ -32,20 +81,23 @@ const CreateExamModal = ({ isOpen, onClose, onExamCreated }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const formattedQuestions = questions.map(q => ({
-        ...q,
-        points: Number(q.points),
-        expectedKeywords: q.expectedKeywords.split(',').map(k => k.trim()).filter(k => k)
+      const formattedQuestions = questions.map((q, i) => ({
+        questionText: q.questionText || `Question ${i + 1}`,
+        questionType: q.questionType || 'short',
+        points: Number(q.points) || 1,
+        expectedKeywords: q.expectedKeywords ? q.expectedKeywords.split(',').map(k => k.trim()).filter(k => k) : []
       }));
 
-      const res = await api.post('/api/exams', 
-        { title, description, questions: formattedQuestions }
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/api/exams`, 
+        { title, description, questions: formattedQuestions },
+        { headers: { 'x-auth-token': token } }
       );
       
       // Reset form
       setTitle('');
       setDescription('');
-      setQuestions([{ questionText: '', questionType: 'short', points: 1, expectedKeywords: '' }]);
+      setQuestions([{ questionText: 'Question 1', questionType: 'short', points: 1, expectedKeywords: '' }]);
       
       onExamCreated(res.data);
       onClose();
@@ -89,76 +141,91 @@ const CreateExamModal = ({ isOpen, onClose, onExamCreated }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Corrigé type de référence / Sujet (pour guider l'IA)
+              </label>
               <textarea 
-                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-500"
+                required
+                className="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-500 text-sm font-sans"
                 value={description} onChange={e => setDescription(e.target.value)}
-                rows="2"
-                placeholder="Ex: Évaluation sur les lois de Newton"
+                rows="6"
+                placeholder="Renseignez ici le sujet et/ou le corrigé type détaillé. L'IA l'utilisera comme seule référence pour noter chaque question."
               />
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 items-center">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleSubjectPhotoUpload} 
+                accept="image/*" 
+                capture="environment" 
+                className="hidden" 
+              />
+              <button
+                type="button"
+                disabled={generating}
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/20"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Analyse du sujet par l'IA...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-5 w-5" />
+                    Générer depuis un sujet photo
+                  </>
+                )}
+              </button>
+              <span className="text-xs text-gray-400 text-center sm:text-left">
+                Prenez en photo votre sujet d'examen pour extraire les questions et le barème automatiquement.
+              </span>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-200">Questions & Réponses (OCR)</h3>
-              <button type="button" onClick={handleAddQuestion} className="text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center transition-colors">
-                <Plus className="h-4 w-4 mr-1" /> Ajouter
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-850 pt-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-250">Configuration du barème</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Indiquez le nombre de questions et attribuez les points de chacune.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-400">Nombre de questions :</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="30"
+                  className="w-16 bg-gray-800 border border-gray-700 text-white px-2 py-1 rounded-lg text-sm font-bold text-center focus:ring-2 focus:ring-indigo-500"
+                  value={questions.length} 
+                  onChange={e => handleNumQuestionsChange(e.target.value)} 
+                />
+              </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-950 p-4 rounded-xl border border-gray-800">
               {questions.map((q, i) => (
-                <div key={i} className="p-5 bg-gray-800/50 rounded-xl border border-gray-700 relative">
-                  {questions.length > 1 && (
-                    <button type="button" onClick={() => handleRemoveQuestion(i)} className="absolute top-4 right-4 text-gray-500 hover:text-red-400 transition-colors p-1 rounded-md hover:bg-gray-700">
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                    <div className="md:col-span-8">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Question {i + 1}</label>
-                      <input 
-                        type="text" required
-                        className="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded-lg focus:ring-1 focus:ring-indigo-500 placeholder-gray-600"
-                        value={q.questionText} onChange={e => handleChange(i, 'questionText', e.target.value)}
-                        placeholder="Texte de la question..."
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Type</label>
-                      <select 
-                        className="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded-lg focus:ring-1 focus:ring-indigo-500"
-                        value={q.questionType} onChange={e => handleChange(i, 'questionType', e.target.value)}
-                      >
-                        <option value="short">Courte</option>
-                        <option value="long">Longue</option>
-                      </select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Points</label>
-                      <input 
-                        type="number" required min="1"
-                        className="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded-lg focus:ring-1 focus:ring-indigo-500"
-                        value={q.points} onChange={e => handleChange(i, 'points', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                      Mots-clés attendus (séparés par des virgules)
-                    </label>
+                <div key={i} className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg flex items-center justify-between gap-1.5 shadow-sm">
+                  <span className="text-xs font-semibold text-gray-400 font-mono">Q{i + 1} :</span>
+                  <div className="flex items-center gap-1">
                     <input 
-                      type="text" 
-                      className="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded-lg focus:ring-1 focus:ring-indigo-500 placeholder-gray-600"
-                      value={q.expectedKeywords} 
-                      onChange={e => handleChange(i, 'expectedKeywords', e.target.value)}
-                      placeholder="Ex: newton, gravité, pomme"
+                      type="number" 
+                      required 
+                      min="0.5" 
+                      step="0.5"
+                      className="w-12 bg-gray-950 border border-gray-750 text-white px-1.5 py-0.5 rounded text-xs font-bold text-center focus:ring-1 focus:ring-indigo-500"
+                      value={q.points} 
+                      onChange={e => handleChange(i, 'points', e.target.value)}
                     />
-                    <p className="text-xs text-gray-500 mt-1.5">L'IA cherchera ces mots ou le sens de la réponse pour attribuer les points.</p>
+                    <span className="text-[10px] text-gray-500 font-semibold uppercase">pts</span>
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="flex justify-between items-center text-xs text-gray-400 pt-1">
+              <span>Total du barème : <strong className="text-indigo-400 font-bold">{questions.reduce((acc, q) => acc + (Number(q.points) || 0), 0)} points</strong></span>
             </div>
           </div>
 
